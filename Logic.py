@@ -13,12 +13,6 @@ with open("/home/izu/Izu/Projects/wordle-game/assets/words.txt") as file:
 def choose_word():
     return random.choice(ALL_ANS)
 
-def validate_choice(choice):
-    if len(choice) == 5 and choice.lower() in ALL_WORDS:
-        return True
-    
-    return False
-
 def check_char_cnt(answer): 
     cnt = []
     cnt.append([answer[0], 1])
@@ -43,6 +37,12 @@ def find_cnt(cnt, char):
             return i
         
     return None
+
+def validate_choice(choice):
+    if len(choice) == 5 and choice.lower() in ALL_WORDS:
+        return True
+    
+    return False
 
 def validate_ans(choice, answer):
     cnt = check_char_cnt(answer)
@@ -78,7 +78,7 @@ def is_won(detail):
             changed = True
             break
 
-    return changed
+    return not changed
 
 # debug
 if __name__ == "__main__":

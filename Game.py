@@ -5,7 +5,7 @@ import time
 
 ## game UI n back end
 SCREEN_SIZE = (1024, 1024)
-LETTER_COLOR = (255, 255, 255)
+LETTER_COLOR = (250, 250, 255)
 
 START_X = 194
 START_Y = 124
@@ -14,9 +14,9 @@ OFFSET_Y = 104.4
 SIZE = 94
 
 # wordle feed back color
-WRONG = (65, 65, 67)
-WRONG_POS = (182, 161, 66)
-CORRECT = (83, 138, 78)
+WRONG = (179, 131, 233)
+WRONG_POS = (243, 180, 194)
+CORRECT = (113, 105, 255)
 
 # game
 class wordleGame:
@@ -27,6 +27,7 @@ class wordleGame:
         self.font = pygame.font.SysFont(None, 110)
 
         self.background = pygame.image.load("/home/izu/Izu/Projects/wordle-game/assets/background.png")
+        self.letter_texture = pygame.image.load("/home/izu/Izu/Projects/wordle-game/assets/texture.jpg").convert_alpha()
 
         self.solver = solver
         self.sol_visual = solver_visual
@@ -42,6 +43,7 @@ class wordleGame:
 
         self.running = True
         self.game_over = False
+        self.letter_cache = {}
         
         if self.solver:
             self.solver.reset()
@@ -108,16 +110,40 @@ class wordleGame:
                 else:
                     color = WRONG
 
-                pygame.draw.rect(self.screen, color, (dx, dy, SIZE, SIZE))
+                rect_surface = pygame.Surface((SIZE, SIZE), pygame.SRCALPHA)
+                rect_surface.fill((*color, 200))
+                self.screen.blit(rect_surface, (dx, dy))
+
 
                 char_x = dx + SIZE // 2
                 char_y = dy + SIZE // 2
 
-                text = self.font.render(word[ox].upper(), True, LETTER_COLOR)
-                text_rect = text.get_rect()
-                text_rect.center = (char_x, char_y)
-                self.screen.blit(text, text_rect)
-        
+                letter = word[ox].upper()
+
+                if letter not in self.letter_cache:
+                    # render white text mask
+                    mask = self.font.render(letter, True, LETTER_COLOR)
+
+                    # create transparent surface same size
+                    textured = pygame.Surface(mask.get_size(), pygame.SRCALPHA)
+
+                    # scale texture to letter size
+                    scaled_texture = pygame.transform.scale(
+                        self.letter_texture,
+                        mask.get_size()
+                    )
+
+                    textured.blit(scaled_texture, (0, 0))
+
+                    # apply mask
+                    textured.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+
+                    self.letter_cache[letter] = textured
+
+                text_surface = self.letter_cache[letter]
+                text_rect = text_surface.get_rect(center=(char_x, char_y))
+                self.screen.blit(text_surface, text_rect)
+
         # temp
         oy = len(self.choices)
         
@@ -125,11 +151,26 @@ class wordleGame:
             char_x = int(START_X + OFFSET_X * ox + SIZE / 2)
             char_y = int(START_Y + OFFSET_Y * oy + SIZE / 2)
 
-            text = self.font.render(char.upper(), True, LETTER_COLOR)
-            text_rect = text.get_rect()
-            text_rect.center = (char_x, char_y)
+            letter = char.upper()
 
-            self.screen.blit(text, text_rect)
+            if letter not in self.letter_cache:
+                mask = self.font.render(letter, True, LETTER_COLOR)
+
+                textured = pygame.Surface(mask.get_size(), pygame.SRCALPHA)
+
+                scaled_texture = pygame.transform.scale(
+                    self.letter_texture,
+                    mask.get_size()
+                )
+
+                textured.blit(scaled_texture, (0, 0))
+                textured.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+
+                self.letter_cache[letter] = textured
+
+            text_surface = self.letter_cache[letter]
+            text_rect = text_surface.get_rect(center=(char_x, char_y))
+            self.screen.blit(text_surface, text_rect)
 
         # update screen
         pygame.display.update()
@@ -153,7 +194,11 @@ class wordleGame:
             self.render()
 
             if self.game_over:
-                print("Won")
+                print("Won (or not, im lazy)")
+                
+                if not self.sol_speed:
+                    pygame.time.delay(15)
+
                 self.reset()
 
             if not self.sol_speed:
@@ -165,7 +210,7 @@ SOL_SPEED = "solver_speed"
 
 if __name__ == "__main__":
     solver = None
-    MODE = HUMAN
+    MODE = SOL_SPEED
 
     if MODE != HUMAN:
         with open("/home/izu/Izu/Projects/wordle-game/assets/answer-nytimes.txt") as f:
