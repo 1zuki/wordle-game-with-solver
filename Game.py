@@ -1,5 +1,6 @@
 import pygame
 import Logic
+import Solver
 import time
 
 ## game UI n back end
@@ -18,127 +19,164 @@ WRONG_POS = (182, 161, 66)
 CORRECT = (83, 138, 78)
 
 # game
-pygame.init()
-screen = pygame.display.set_mode(SCREEN_SIZE)
-clock = pygame.time.Clock()
-background = pygame.image.load("/home/izu/Izu/Projects/wordle-game/assets/background.png")
+class wordleGame:
+    def __init__(self, solver = None, solver_visual = False, solver_speed = False):
+        pygame.init()
+        self.screen = pygame.display.set_mode(SCREEN_SIZE)
+        self.clock = pygame.time.Clock()
+        self.font = pygame.font.SysFont(None, 110)
 
-class gameVars:
-    def __init__(self):
+        self.background = pygame.image.load("/home/izu/Izu/Projects/wordle-game/assets/background.png")
+
+        self.solver = solver
+        self.sol_visual = solver_visual
+        self.sol_speed = solver_speed
+
         self.reset()
 
     def reset(self):
         self.answer = Logic.choose_word()
         self.choices = []
-        self.temp = []
         self.feedback = []
+        self.temp = []
 
         self.running = True
-        self.prev = 0
-        self.current = 0
+        self.game_over = False
         
-        screen.blit(background, (0, 0))
-        print(self.answer)
+        if self.solver:
+            self.solver.reset()
 
-vars = gameVars()
+        print("Answer:", self.answer)
 
-# game
-def play_game():
-    pygame.draw.rect(screen, (255, 0, 0), (START_X, START_Y, 10, 10))
-    font = pygame.font.SysFont(None, 110)
-    screen.blit(background, (0, 0))
+    def human_input(self, event):
+        if event.key == pygame.K_BACKSPACE and self.temp:
+            self.temp.pop()
 
+        elif event.key == pygame.K_RETURN:
+            self.submit_row()
 
-    while vars.running:
-        changed = False
-        changed = False
+        else:
+            char = event.unicode
 
-        if len(vars.temp) != vars.prev:
-            vars.prev = len(vars.temp)
-            print(vars.temp)
+            if char.isalpha() and len(char) == 1 and len(self.temp) < 5:
+                self.temp.append(char.lower())
+
+    def solver_input(self):
+        turn = len(self.choices)
+        guess = self.solver.next_guess(turn)
+        self.temp = list(guess)
+        self.submit_row()
+
+    def submit_row(self):
+        word = "".join(self.temp)
         
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                vars.running = False
+        if not Logic.validate_choice(word):
+            return
+        
+        self.choices.append(word)
+        feedback = Logic.validate_ans(word, self.answer)
+        self.feedback.append(feedback)
 
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_BACKSPACE:
-                    if len(vars.temp) != 0:
-                        changed = True
-                        vars.temp.pop()
+        if self.solver:
+            self.solver.apply_feedback(word, feedback)
 
-                
-                elif event.key == pygame.K_RETURN:
-                    choice = "".join(vars.temp)
-                    changed = True
+        self.temp.clear()
 
-                    if Logic.validate_choice(choice):
-                        vars.current += 1
-                        vars.choices.append(choice)
-                        vars.temp.clear()
-                        vars.feedback.append(Logic.validate_ans(choice, vars.answer))
+        if Logic.is_won(feedback):
+            self.game_over = True
 
-                    else:
-                        print("Invalid")
+        if len(self.choices) >= 6:
+            self.game_over = True
+
+    def render(self):
+        self.screen.blit(self.background, (0, 0))
+
+        # choices
+        for oy, word in enumerate(self.choices):
+            for ox in range(5):
+                dx = int(START_X + OFFSET_X * ox)
+                dy = int(START_Y + OFFSET_Y * oy)
+
+                feedback = self.feedback[oy][ox]
+
+                if feedback == 1:
+                    color = CORRECT
+
+                elif feedback == 0:
+                    color = WRONG_POS
 
                 else:
-                    char = event.unicode
-                    changed = True
-                    
-                    if char.isalpha() and len(char) == 1 and len(vars.temp) < 5:
-                        vars.temp.append(char)
+                    color = WRONG
 
-        if changed:
-            screen.blit(background, (0, 0))
-            dy = int(START_Y + OFFSET_Y * vars.current + SIZE / 2)
-            
-            for ox in range(len(vars.temp)):
-                dx = int(START_X + OFFSET_X * ox + SIZE /2)
+                pygame.draw.rect(self.screen, color, (dx, dy, SIZE, SIZE))
 
-                text = font.render(vars.temp[ox].upper(), True, LETTER_COLOR)
+                char_x = dx + SIZE // 2
+                char_y = dy + SIZE // 2
+
+                text = self.font.render(word[ox].upper(), True, LETTER_COLOR)
                 text_rect = text.get_rect()
-                text_rect.center = (dx, dy)
+                text_rect.center = (char_x, char_y)
+                self.screen.blit(text, text_rect)
+        
+        # temp
+        oy = len(self.choices)
+        
+        for ox, char in enumerate(self.temp):
+            char_x = int(START_X + OFFSET_X * ox + SIZE / 2)
+            char_y = int(START_Y + OFFSET_Y * oy + SIZE / 2)
 
-                screen.blit(text, text_rect)
-            # board
-            for oy in range(len(vars.choices)):
-                for ox in range(5):
-                    dx = int(START_X + OFFSET_X * ox)
-                    dy = int(START_Y + OFFSET_Y * oy)
+            text = self.font.render(char.upper(), True, LETTER_COLOR)
+            text_rect = text.get_rect()
+            text_rect.center = (char_x, char_y)
 
-                    # feedback
-                    if vars.feedback[oy][ox] == -1:
-                        color = WRONG
+            self.screen.blit(text, text_rect)
 
-                    elif vars.feedback[oy][ox] == 0:
-                        color = WRONG_POS
-
-                    else:
-                        color = CORRECT
-
-                    pygame.draw.rect(screen, color, (dx, dy, SIZE, SIZE))
-
-                    # words
-                    dy = int(START_Y + OFFSET_Y * oy + SIZE / 2)
-                    dx = int(START_X + OFFSET_X * ox + SIZE / 2)
-
-                    text = font.render(vars.choices[oy][ox].upper(), True, LETTER_COLOR)
-                    text_rect = text.get_rect()
-                    text_rect.center = (dx, dy)
-
-                    screen.blit(text, text_rect)
-            
-                if not Logic.is_won(vars.feedback[oy]):
-                    pygame.display.update()
-                    print("Won")
-                    time.sleep(1)
-                    vars.reset()
-
+        # update screen
         pygame.display.update()
-        clock.tick(60)
 
-    pygame.quit()
+    def run(self):
+        while self.running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+
+                if not self.game_over and not self.sol_visual:
+                    if event.type == pygame.KEYDOWN:
+                        self.human_input(event)
+
+            if not self.game_over and self.sol_visual:
+                self.solver_input()
+
+                if not self.sol_speed:
+                    pygame.time.delay(15)
+            
+            self.render()
+
+            if self.game_over:
+                print("Won")
+                self.reset()
+
+            if not self.sol_speed:
+                self.clock.tick(60)
+
+HUMAN = "human"
+SOL_VIS = "solver_visual"
+SOL_SPEED = "solver_speed"
 
 if __name__ == "__main__":
-    while True:
-        play_game()
+    solver = None
+    MODE = HUMAN
+
+    if MODE != HUMAN:
+        with open("/home/izu/Izu/Projects/wordle-game/assets/answer-nytimes.txt") as f:
+            words = [w.strip().lower() for w in f if len(w.strip()) == 5]
+
+        solver = Solver.WordleSolver(words, Logic.validate_ans)
+
+    game = wordleGame(
+        solver = solver,
+        solver_visual = (MODE != HUMAN),
+        solver_speed = (MODE == SOL_SPEED)
+    )
+
+    game.run()
