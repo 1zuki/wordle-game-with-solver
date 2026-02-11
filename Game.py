@@ -28,6 +28,7 @@ class wordleGame:
 
         self.background = pygame.image.load("/home/izu/Izu/Projects/wordle-game/assets/background.png")
         self.letter_texture = pygame.image.load("/home/izu/Izu/Projects/wordle-game/assets/texture.jpg").convert_alpha()
+        self.lost_sound = pygame.mixer.Sound("/home/izu/Izu/Projects/wordle-game/assets/getout.mp3")
 
         self.solver = solver
         self.sol_visual = solver_visual
@@ -89,6 +90,7 @@ class wordleGame:
 
         if len(self.choices) >= 6:
             self.game_over = True
+            self.lost_sound.play()
 
     def render(self):
         self.screen.blit(self.background, (0, 0))
@@ -189,7 +191,7 @@ class wordleGame:
                 self.solver_input()
 
                 if not self.sol_speed:
-                    pygame.time.delay(15)
+                    pygame.time.delay(75)
             
             self.render()
 
@@ -197,7 +199,7 @@ class wordleGame:
                 print("Won (or not, im lazy)")
                 
                 if not self.sol_speed:
-                    pygame.time.delay(15)
+                    pygame.time.delay(150)
 
                 self.reset()
 
