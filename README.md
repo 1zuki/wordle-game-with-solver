@@ -55,7 +55,7 @@ The AI uses a hybrid approach:
     - Finishes efficiently
 
 This keeps:
-- High win rate (~95–97%)
+- High win rate (~95–99%)
 - Low average turn count (~3.6 -> 3.8)
 - Strong late-game stability
 
