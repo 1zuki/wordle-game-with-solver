@@ -102,12 +102,12 @@ python Solver.py
 
 Outputs:
 ```
-Games: 500
-Fails: 14
-Win rate: 0.972
-Avg game: 380 games/sec
-Avg turns: 3.82
-Time: 1.31 seconds
+Games: 1836
+Fails: 6
+Win rate: 0.99673
+Avg game: 423.26 games/sec
+Avg turns: 3.577
+Time: 4.338 seconds
 ```
 
 ---
